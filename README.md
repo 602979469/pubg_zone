@@ -96,38 +96,38 @@ python scraper.py
 - `systemd` 直接运行 Python 标准库服务，监听 `127.0.0.1:8765`
 - Caddy 反代 `pubg.jakt.online`，自动申请证书
 - 服务限制 `MemoryMax=128M`、`CPUQuota=25%`
-- CI 每 5 分钟轮询 GitHub，有新提交就下载源码、同步到 `/opt/pubg-zone`、重启服务
+- 不装 cron，不做定时轮询；更新时手动 `git pull` 并重启，节省流量
 
 首次安装（root）：
 
 ```bash
 useradd --system --no-create-home --shell /usr/sbin/nologin pubg 2>/dev/null || true
-mkdir -p /opt/pubg-zone /opt/pubg-zone-ci
+git clone https://github.com/602979469/pubg_zone.git /opt/pubg-zone
+chown -R pubg:pubg /opt/pubg-zone
 
-# 首次可先用 GitHub tarball 解压到 /opt/pubg-zone
-# 然后将 deploy/pubg-zone.service 放到 /etc/systemd/system/
+install -m 644 /opt/pubg-zone/deploy/pubg-zone.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now pubg-zone
 
 # 将 deploy/Caddyfile.pubg 的内容追加到 /etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile
 systemctl reload caddy
-
-install -m 755 ci/pipeline.sh /opt/pubg-zone-ci/pipeline.sh
 ```
 
-CI 的 cron（root）：
+每次更新代码后，在公网机执行：
 
-```cron
-*/5 * * * * /opt/pubg-zone-ci/pipeline.sh >> /opt/pubg-zone-ci/cron.log 2>&1
+```bash
+/opt/pubg-zone/update.sh
 ```
+
+它等价于 `git pull --ff-only && systemctl restart pubg-zone && curl /health`。
+脚本不需要参数；如果你在公网机本地改过代码，先 commit/push，再运行它。
 
 查看状态：
 
 ```bash
 systemctl status pubg-zone
 journalctl -u pubg-zone -n 50 --no-pager
-tail -f /opt/pubg-zone-ci/pipeline.log
 ```
 
 ## 排查
