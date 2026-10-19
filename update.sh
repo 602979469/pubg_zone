@@ -4,8 +4,15 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+if [ "$(id -u)" -eq 0 ]; then
+  git config --global --add safe.directory "$PWD" 2>/dev/null || true
+fi
+
 echo "Pulling latest code..."
 git pull --ff-only
+if [ "$(id -u)" -eq 0 ]; then
+  chown -R pubg:pubg "$PWD"
+fi
 
 echo "Restarting pubg-zone..."
 if [ "$(id -u)" -eq 0 ]; then
