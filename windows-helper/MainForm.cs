@@ -1,6 +1,8 @@
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -8,328 +10,599 @@ namespace PubgZoneHelper;
 
 public sealed class MainForm : Form
 {
-    private readonly TextBox _log = new();
-    private readonly ComboBox _mode = new();
-    private readonly TextBox _url = new();
-    private readonly TextBox _acceleratorPath = new();
-    private readonly TextBox _steamPath = new();
-    private readonly TextBox _pubgId = new();
-    private readonly Button _closeButton = new();
-    private readonly Button _acceleratorButton = new();
-    private readonly Button _steamButton = new();
-    private readonly Button _pubgButton = new();
-    private readonly Button _flowButton = new();
-    private readonly Button _steamPubgButton = new();
+    private readonly Label _status = new();
+    private readonly Label _patch = new();
+    private readonly Label _heroTitle = new();
+    private readonly Label _heroWeek = new();
+    private readonly FlowLayoutPanel _regionFlow = new();
+    private readonly FlowLayoutPanel _heroMaps = new();
+    private readonly RoundedPanel _hero = new();
+    private readonly RoundedButton _guideButton = new();
+    private readonly RoundedButton _refreshMaps = new();
+    private readonly RoundedButton _switchButton = new();
+    private readonly RoundedButton _playButton = new();
+    private readonly List<string> _log = new();
+
     private AppConfig _config = new();
+    private RotationData _rotation = RotationData.Empty;
+    private RegionInfo? _selected;
+    private bool _loadingMaps;
 
     public MainForm()
     {
         Text = "PUBG 换区助手";
-        ClientSize = new Size(760, 620);
-        MinimumSize = new Size(780, 660);
+        ClientSize = new Size(1000, 700);
+        MinimumSize = new Size(1020, 740);
         StartPosition = FormStartPosition.CenterScreen;
-        BackColor = Color.FromArgb(18, 22, 27);
-        ForeColor = Color.FromArgb(235, 238, 242);
-        Font = new Font("Microsoft YaHei UI", 9F);
+        BackColor = Theme.Bg;
+        ForeColor = Theme.Text;
+        Font = new Font("Microsoft YaHei UI", 9.5F);
         AutoScaleMode = AutoScaleMode.Dpi;
 
         BuildUi();
         LoadConfig();
+        Shown += async (_, _) =>
+        {
+            _ = LoadRotationAsync();
+            if (EnsureConfigured(true, out var startSwitch) && startSwitch)
+                await SwitchRegion();
+        };
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        using var brush = new LinearGradientBrush(
+            ClientRectangle,
+            Color.FromArgb(11, 15, 19),
+            Color.FromArgb(20, 27, 33),
+            LinearGradientMode.Vertical);
+        e.Graphics.FillRectangle(brush, ClientRectangle);
+        base.OnPaint(e);
     }
 
     private void BuildUi()
     {
-        var title = new Label
+        var root = new TableLayoutPanel
         {
-            Text = "PUBG 换区助手",
-            Font = new Font("Microsoft YaHei UI", 19F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(255, 209, 138),
-            AutoSize = true,
-            Location = new Point(22, 16)
-        };
-        var subtitle = new Label
-        {
-            Text = "关闭 Steam / PUBG → 打开加速器 → 选好区服 → 重新启动",
-            ForeColor = Color.FromArgb(150, 160, 172),
-            AutoSize = true,
-            Location = new Point(24, 54)
-        };
-        Controls.Add(title);
-        Controls.Add(subtitle);
-
-        var actions = new FlowLayoutPanel
-        {
-            Location = new Point(20, 86),
-            Size = new Size(330, 280),
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
             BackColor = Color.Transparent
         };
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        Controls.Add(root);
+        root.Controls.Add(BuildHeader(), 0, 0);
 
-        ConfigureButton(_flowButton, "一键换区流程", Color.FromArgb(242, 163, 58), Color.FromArgb(28, 22, 14));
-        ConfigureButton(_closeButton, "一键关闭 Steam / PUBG", Color.FromArgb(190, 74, 74), Color.White);
-        ConfigureButton(_acceleratorButton, "打开加速器", Color.FromArgb(52, 64, 78), Color.White);
-        ConfigureButton(_steamButton, "启动 Steam", Color.FromArgb(52, 64, 78), Color.White);
-        ConfigureButton(_pubgButton, "启动 PUBG", Color.FromArgb(52, 64, 78), Color.White);
-        ConfigureButton(_steamPubgButton, "启动 Steam + PUBG", Color.FromArgb(52, 64, 78), Color.White);
-
-        actions.Controls.AddRange(new Control[]
+        var body = new TableLayoutPanel
         {
-            _flowButton, _closeButton, _acceleratorButton, _steamButton, _pubgButton, _steamPubgButton
-        });
-        Controls.Add(actions);
-
-        var settings = new GroupBox
-        {
-            Text = "加速器与路径设置",
-            Location = new Point(370, 82),
-            Size = new Size(370, 300),
-            ForeColor = Color.FromArgb(200, 210, 220)
+            Dock = DockStyle.Fill,
+            ColumnCount = 3,
+            RowCount = 1,
+            BackColor = Color.Transparent,
+            Padding = new Padding(22, 18, 22, 18)
         };
-        Controls.Add(settings);
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 206));
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 252));
+        root.Controls.Add(body, 0, 1);
 
-        AddLabel(settings, "打开方式", 14, 28);
-        _mode.Items.AddRange(new object[] { "协议链接（推荐）", "直接启动 EXE" });
-        _mode.DropDownStyle = ComboBoxStyle.DropDownList;
-        _mode.Location = new Point(92, 24);
-        _mode.Width = 250;
-        StyleInput(_mode);
-        settings.Controls.Add(_mode);
-
-        AddLabel(settings, "协议链接", 14, 64);
-        _url.Location = new Point(92, 60);
-        _url.Width = 250;
-        StyleInput(_url);
-        settings.Controls.Add(_url);
-
-        AddLabel(settings, "加速器 EXE", 14, 100);
-        _acceleratorPath.Location = new Point(92, 96);
-        _acceleratorPath.Width = 176;
-        StyleInput(_acceleratorPath);
-        settings.Controls.Add(_acceleratorPath);
-        var chooseAccel = new Button { Text = "选择", Location = new Point(274, 95), Size = new Size(68, 26) };
-        StyleSmallButton(chooseAccel);
-        chooseAccel.Click += (_, _) => ChooseFile(_acceleratorPath, "选择加速器 EXE", "DolphinQ.exe|DolphinQ.exe|EXE|*.exe");
-        settings.Controls.Add(chooseAccel);
-
-        AddLabel(settings, "Steam EXE", 14, 136);
-        _steamPath.Location = new Point(92, 132);
-        _steamPath.Width = 176;
-        StyleInput(_steamPath);
-        settings.Controls.Add(_steamPath);
-        var chooseSteam = new Button { Text = "选择", Location = new Point(274, 131), Size = new Size(68, 26) };
-        StyleSmallButton(chooseSteam);
-        chooseSteam.Click += (_, _) => ChooseFile(_steamPath, "选择 steam.exe", "steam.exe|steam.exe|EXE|*.exe");
-        settings.Controls.Add(chooseSteam);
-
-        AddLabel(settings, "PUBG AppID", 14, 172);
-        _pubgId.Location = new Point(92, 168);
-        _pubgId.Width = 100;
-        StyleInput(_pubgId);
-        settings.Controls.Add(_pubgId);
-
-        var save = new Button { Text = "保存配置", Location = new Point(92, 212), Size = new Size(100, 30) };
-        StyleSmallButton(save);
-        save.Click += (_, _) => SaveConfig(true);
-        settings.Controls.Add(save);
-
-        var detect = new Button { Text = "重新检测", Location = new Point(202, 212), Size = new Size(100, 30) };
-        StyleSmallButton(detect);
-        detect.Click += (_, _) =>
-        {
-            _config = new AppConfig { PreferUrl = true };
-            ConfigStore.AutoDetect(_config);
-            BindConfig();
-            SaveConfig(true);
-            Log("已重新检测路径");
-        };
-        settings.Controls.Add(detect);
-
-        var hint = new Label
-        {
-            Text = "默认 dolphin:// 打开面板；也可填 dolphin://start_acc_game/5 直达游戏。\n协议打开失败会自动尝试 EXE。",
-            ForeColor = Color.FromArgb(130, 142, 155),
-            Location = new Point(14, 252),
-            Size = new Size(340, 40)
-        };
-        settings.Controls.Add(hint);
-
-        _log.Location = new Point(20, 398);
-        _log.Size = new Size(720, 200);
-        _log.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
-        _log.Multiline = true;
-        _log.ReadOnly = true;
-        _log.ScrollBars = ScrollBars.Vertical;
-        _log.BackColor = Color.FromArgb(12, 16, 20);
-        _log.ForeColor = Color.FromArgb(190, 205, 215);
-        _log.Font = new Font("Consolas", 9F);
-        _log.BorderStyle = BorderStyle.FixedSingle;
-        Controls.Add(_log);
-
-        _mode.SelectedIndexChanged += (_, _) => UpdateMode();
-        _flowButton.Click += async (_, _) => await RunFlow();
-        _closeButton.Click += async (_, _) => await RunClose();
-        _acceleratorButton.Click += (_, _) => RunAccelerator();
-        _steamButton.Click += (_, _) => RunSteam();
-        _pubgButton.Click += (_, _) => RunPubg();
-        _steamPubgButton.Click += async (_, _) => await RunSteamPubg();
+        body.Controls.Add(BuildSidebar(), 0, 0);
+        body.Controls.Add(BuildCenter(), 1, 0);
+        body.Controls.Add(BuildTools(), 2, 0);
     }
 
-    private static void AddLabel(Control parent, string text, int x, int y)
+    private Control BuildHeader()
     {
-        parent.Controls.Add(new Label
+        var header = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
+        header.Paint += (_, e) =>
         {
-            Text = text,
-            Location = new Point(x, y),
+            using var brush = new LinearGradientBrush(
+                header.ClientRectangle,
+                Color.FromArgb(26, 34, 42),
+                Color.FromArgb(15, 20, 25),
+                LinearGradientMode.Horizontal);
+            e.Graphics.FillRectangle(brush, header.ClientRectangle);
+            using var line = new Pen(Theme.Line);
+            e.Graphics.DrawLine(line, 0, header.Height - 1, header.Width, header.Height - 1);
+        };
+
+        header.Controls.Add(new Label
+        {
+            Text = "绝地求生",
+            Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(255, 209, 138),
             AutoSize = true,
-            ForeColor = Color.FromArgb(165, 176, 188)
+            Location = new Point(28, 14)
         });
+        header.Controls.Add(new Label
+        {
+            Text = "PUBG 本周地图 · 换区助手",
+            ForeColor = Theme.Muted,
+            AutoSize = true,
+            Location = new Point(31, 57)
+        });
+
+        _patch.Text = "UPDATE —";
+        _patch.ForeColor = Theme.Accent;
+        _patch.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
+        _patch.AutoSize = true;
+        _patch.Location = new Point(820, 20);
+        _patch.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        header.Controls.Add(_patch);
+
+        header.Controls.Add(new Label
+        {
+            Text = "本周地图",
+            ForeColor = Theme.Muted,
+            AutoSize = true,
+            Location = new Point(820, 48),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
+        });
+
+        var gear = new RoundedButton
+        {
+            Text = "⚙",
+            Location = new Point(930, 22),
+            Size = new Size(42, 42),
+            CornerRadius = 21,
+            BackColor = Color.FromArgb(32, 41, 51),
+            ForeColor = Color.FromArgb(225, 234, 243),
+            HoverColor = Color.FromArgb(44, 55, 67),
+            BorderColor = Theme.Line,
+            Font = new Font("Segoe UI Symbol", 15F)
+        };
+        gear.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        gear.Click += (_, _) => ShowSetup();
+        header.Controls.Add(gear);
+        return header;
     }
 
-    private static void ConfigureButton(Button button, string text, Color background, Color foreground)
+    private Control BuildSidebar()
     {
-        button.Text = text;
-        button.Size = new Size(310, 40);
-        button.FlatStyle = FlatStyle.Flat;
-        button.FlatAppearance.BorderColor = Color.FromArgb(55, 66, 78);
-        button.BackColor = background;
-        button.ForeColor = foreground;
-        button.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
-        button.Cursor = Cursors.Hand;
-        button.Margin = new Padding(0, 0, 0, 8);
+        var panel = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 14, 0),
+            FillColor = Theme.Panel,
+            BorderColor = Theme.Line,
+            Padding = new Padding(14, 16, 14, 14)
+        };
+        panel.Controls.Add(new Label
+        {
+            Text = "大区选择",
+            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Location = new Point(16, 16)
+        });
+        panel.Controls.Add(new Label
+        {
+            Text = "本周地图池",
+            ForeColor = Theme.Muted,
+            AutoSize = true,
+            Location = new Point(18, 44)
+        });
+
+        _regionFlow.Location = new Point(10, 76);
+        _regionFlow.Size = new Size(180, 500);
+        _regionFlow.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+        _regionFlow.FlowDirection = FlowDirection.TopDown;
+        _regionFlow.WrapContents = false;
+        _regionFlow.AutoScroll = true;
+        _regionFlow.BackColor = Color.Transparent;
+        panel.Controls.Add(_regionFlow);
+        return panel;
     }
 
-    private static void StyleSmallButton(Button button)
+    private Control BuildCenter()
     {
-        button.FlatStyle = FlatStyle.Flat;
-        button.FlatAppearance.BorderColor = Color.FromArgb(70, 82, 96);
-        button.BackColor = Color.FromArgb(40, 49, 60);
-        button.ForeColor = Color.FromArgb(225, 232, 240);
-        button.Cursor = Cursors.Hand;
+        _hero.Dock = DockStyle.Fill;
+        _hero.Margin = new Padding(0, 0, 14, 0);
+        _hero.FillColor = Theme.Panel;
+        _hero.BorderColor = Theme.Line;
+        _hero.Padding = new Padding(24, 20, 24, 18);
+
+        _hero.Controls.Add(new Label
+        {
+            Text = "当前大区",
+            ForeColor = Theme.Muted,
+            AutoSize = true,
+            Location = new Point(24, 20)
+        });
+
+        _heroTitle.Text = "正在加载…";
+        _heroTitle.Font = new Font("Microsoft YaHei UI", 24F, FontStyle.Bold);
+        _heroTitle.ForeColor = Theme.Text;
+        _heroTitle.AutoSize = true;
+        _heroTitle.Location = new Point(24, 46);
+        _hero.Controls.Add(_heroTitle);
+
+        _heroWeek.Text = "正在加载地图…";
+        _heroWeek.ForeColor = Theme.Muted;
+        _heroWeek.AutoSize = true;
+        _heroWeek.Location = new Point(27, 92);
+        _hero.Controls.Add(_heroWeek);
+
+        _hero.Controls.Add(new Label
+        {
+            Text = "本周地图",
+            ForeColor = Theme.Muted,
+            AutoSize = true,
+            Location = new Point(24, 132)
+        });
+
+        _heroMaps.Location = new Point(24, 158);
+        _heroMaps.Size = new Size(430, 112);
+        _heroMaps.WrapContents = true;
+        _heroMaps.BackColor = Color.Transparent;
+        _hero.Controls.Add(_heroMaps);
+
+        _status.Text = "准备就绪";
+        _status.ForeColor = Theme.Muted;
+        _status.Location = new Point(26, 380);
+        _status.Size = new Size(430, 24);
+        _hero.Controls.Add(_status);
+
+        var actions = new TableLayoutPanel
+        {
+            Location = new Point(24, 420),
+            Size = new Size(430, 74),
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = Color.Transparent,
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+        };
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+
+        _switchButton.Text = "一键换区\r\n关闭 Steam/PUBG，打开加速器";
+        _switchButton.Dock = DockStyle.Fill;
+        _switchButton.Margin = new Padding(0, 0, 7, 0);
+        _switchButton.BackColor = Theme.Accent;
+        _switchButton.ForeColor = Color.FromArgb(30, 22, 12);
+        _switchButton.HoverColor = Color.FromArgb(255, 183, 84);
+        _switchButton.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
+        _switchButton.Click += async (_, _) => await SwitchRegion();
+
+        _playButton.Text = "开启游戏\r\n启动 Steam + PUBG";
+        _playButton.Dock = DockStyle.Fill;
+        _playButton.Margin = new Padding(7, 0, 0, 0);
+        _playButton.BackColor = Theme.Green;
+        _playButton.ForeColor = Color.White;
+        _playButton.HoverColor = Color.FromArgb(78, 180, 126);
+        _playButton.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
+        _playButton.Click += async (_, _) => await PlayGame();
+
+        actions.Controls.Add(_switchButton, 0, 0);
+        actions.Controls.Add(_playButton, 1, 0);
+        _hero.Controls.Add(actions);
+        return _hero;
     }
 
-    private static void StyleInput(Control control)
+    private Control BuildTools()
     {
-        control.BackColor = Color.FromArgb(24, 30, 37);
-        control.ForeColor = Color.FromArgb(230, 236, 242);
+        var host = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            BackColor = Color.Transparent
+        };
+        host.RowStyles.Add(new RowStyle(SizeType.Percent, 62));
+        host.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
+
+        var guide = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 0, 12),
+            FillColor = Theme.Panel,
+            BorderColor = Theme.Line,
+            Padding = new Padding(16)
+        };
+        guide.Controls.Add(new Label
+        {
+            Text = "换区教程",
+            Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Location = new Point(16, 14)
+        });
+        var tips = new Label
+        {
+            Text = "1. 一键关闭 Steam/PUBG\n2. 在加速器选目标区服\n3. 回来开启游戏",
+            ForeColor = Theme.Muted,
+            AutoSize = true,
+            Location = new Point(17, 48)
+        };
+        guide.Controls.Add(tips);
+
+        _guideButton.Text = "查看换区教程";
+        _guideButton.Location = new Point(16, 110);
+        _guideButton.Size = new Size(218, 42);
+        _guideButton.BackColor = Theme.Accent;
+        _guideButton.ForeColor = Color.FromArgb(30, 22, 12);
+        _guideButton.HoverColor = Color.FromArgb(255, 183, 84);
+        _guideButton.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
+        _guideButton.Click += (_, _) => ShowGuide();
+        guide.Controls.Add(_guideButton);
+        host.Controls.Add(guide, 0, 0);
+
+        var tools = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            FillColor = Theme.Panel,
+            BorderColor = Theme.Line,
+            Padding = new Padding(16)
+        };
+        tools.Controls.Add(new Label
+        {
+            Text = "工具",
+            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Location = new Point(16, 14)
+        });
+
+        _refreshMaps.Text = "刷新地图";
+        _refreshMaps.Location = new Point(16, 44);
+        _refreshMaps.Size = new Size(100, 34);
+        _refreshMaps.BackColor = Theme.Panel2;
+        _refreshMaps.ForeColor = Theme.Text;
+        _refreshMaps.HoverColor = Color.FromArgb(36, 45, 55);
+        _refreshMaps.BorderColor = Theme.Line;
+        _refreshMaps.Click += async (_, _) => await LoadRotationAsync();
+        tools.Controls.Add(_refreshMaps);
+
+        var settings = new RoundedButton
+        {
+            Text = "设置路径",
+            Location = new Point(124, 44),
+            Size = new Size(100, 34),
+            BackColor = Theme.Panel2,
+            ForeColor = Theme.Text,
+            HoverColor = Color.FromArgb(36, 45, 55),
+            BorderColor = Theme.Line
+        };
+        settings.Click += (_, _) => ShowSetup();
+        tools.Controls.Add(settings);
+
+        var logs = new RoundedButton
+        {
+            Text = "查看日志",
+            Location = new Point(16, 88),
+            Size = new Size(100, 34),
+            BackColor = Theme.Panel2,
+            ForeColor = Theme.Text,
+            HoverColor = Color.FromArgb(36, 45, 55),
+            BorderColor = Theme.Line
+        };
+        logs.Click += (_, _) => ShowLog();
+        tools.Controls.Add(logs);
+        host.Controls.Add(tools, 0, 1);
+        return host;
     }
 
     private void LoadConfig()
     {
         _config = ConfigStore.Load();
-        BindConfig();
         Log($"配置文件: {ConfigStore.FilePath}");
-        Log($"管理员权限: {ProcessTools.IsAdministrator()}");
-        Log($"Steam: {(_config.SteamPath.Length > 0 ? _config.SteamPath : "未找到")}");
-        Log($"加速器: {(_config.AcceleratorPath.Length > 0 ? _config.AcceleratorPath : "未找到")}");
     }
 
-    private void BindConfig()
+    private async Task LoadRotationAsync()
     {
-        _mode.SelectedIndex = _config.PreferUrl ? 0 : 1;
-        _url.Text = _config.AcceleratorUrl;
-        _acceleratorPath.Text = _config.AcceleratorPath;
-        _steamPath.Text = _config.SteamPath;
-        _pubgId.Text = _config.PubgAppId;
-        UpdateMode();
-    }
-
-    private void UpdateMode()
-    {
-        var urlMode = _mode.SelectedIndex == 0;
-        _url.Enabled = urlMode;
-        _acceleratorPath.Enabled = !urlMode;
-    }
-
-    private void SaveConfig(bool log)
-    {
-        _config.PreferUrl = _mode.SelectedIndex == 0;
-        _config.AcceleratorUrl = _url.Text.Trim();
-        _config.AcceleratorPath = _acceleratorPath.Text.Trim();
-        _config.SteamPath = _steamPath.Text.Trim();
-        _config.PubgAppId = _pubgId.Text.Trim();
-        ConfigStore.Save(_config);
-        if (log) Log("配置已保存");
-    }
-
-    private static void ChooseFile(TextBox target, string title, string filter)
-    {
-        using var dialog = new OpenFileDialog
-        {
-            Title = title,
-            Filter = filter,
-            CheckFileExists = true
-        };
-        if (dialog.ShowDialog() == DialogResult.OK)
-            target.Text = dialog.FileName;
-    }
-
-    private async Task RunClose()
-    {
-        SaveConfig(false);
-        SetButtons(false);
-        Log("开始关闭 Steam / PUBG 相关进程…");
+        if (_loadingMaps) return;
+        _loadingMaps = true;
+        _refreshMaps.Enabled = false;
+        _heroWeek.Text = "正在加载地图…";
+        _heroMaps.Controls.Clear();
         try
         {
-            await Task.Run(() => ProcessTools.CloseSteamAndPubg(Log));
+            _rotation = await RotationClient.LoadAsync();
+            if (_rotation.Loaded && _rotation.Regions.Count > 0)
+            {
+                _selected = _rotation.Regions.Find(r => r.Id == "AS") ?? _rotation.Regions[0];
+                _patch.Text = $"UPDATE {_rotation.Patch}";
+                _heroWeek.Text = $"本周 · {_rotation.WeekLabel}";
+                RenderRegions();
+                RenderHero();
+                Log($"地图已加载: {_rotation.Patch}, {_rotation.Regions.Count} 个大区");
+            }
+            else
+            {
+                _heroTitle.Text = "地图加载失败";
+                _heroWeek.Text = "不影响一键换区和开启游戏，稍后可点「刷新地图」";
+                _patch.Text = "UPDATE —";
+                _status.Text = "地图数据不可用";
+            }
         }
         catch (Exception ex)
         {
-            Log($"关闭失败: {ex.Message}");
+            _heroWeek.Text = "地图加载失败，不影响换区和开游戏";
+            Log($"地图加载失败: {ex.Message}");
         }
         finally
         {
-            SetButtons(true);
+            _loadingMaps = false;
+            _refreshMaps.Enabled = true;
         }
     }
 
-    private async Task RunFlow()
+    private void RenderRegions()
     {
-        await RunClose();
-        RunAccelerator();
-        MessageBox.Show(
-            "Steam / PUBG 已关闭，加速器已打开。\n请在加速器里选好区服，再点「启动 Steam」或「启动 PUBG」。",
-            "PUBG 换区助手",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
-    }
-
-    private void RunAccelerator()
-    {
-        SaveConfig(false);
-        Launcher.OpenAccelerator(_config, Log);
-    }
-
-    private void RunSteam()
-    {
-        SaveConfig(false);
-        Launcher.StartSteam(_config, Log);
-    }
-
-    private void RunPubg()
-    {
-        SaveConfig(false);
-        Launcher.StartPubg(_config, Log);
-    }
-
-    private async Task RunSteamPubg()
-    {
-        SaveConfig(false);
-        if (!Launcher.StartSteam(_config, Log)) return;
-        Log("等待 8 秒后启动 PUBG…");
-        await Task.Delay(8000);
-        Launcher.StartPubg(_config, Log);
-    }
-
-    private void SetButtons(bool enabled)
-    {
-        foreach (var button in new[]
+        _regionFlow.Controls.Clear();
+        foreach (var region in _rotation.Regions)
         {
-            _flowButton, _closeButton, _acceleratorButton, _steamButton, _pubgButton, _steamPubgButton
-        })
-        {
-            button.Enabled = enabled;
+            var selected = _selected?.Id == region.Id;
+            var chip = new RoundedButton
+            {
+                Text = $"{region.Name}  {region.Short}",
+                Size = new Size(168, 42),
+                Margin = new Padding(0, 0, 0, 7),
+                CornerRadius = 10,
+                BackColor = selected ? ParseColor(region.Accent) : Theme.Panel2,
+                ForeColor = selected ? Color.FromArgb(25, 25, 25) : Theme.Text,
+                HoverColor = selected ? ParseColor(region.Accent) : Color.FromArgb(36, 45, 55),
+                BorderColor = ParseColor(region.Accent),
+                Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold)
+            };
+            var captured = region;
+            chip.Click += (_, _) =>
+            {
+                _selected = captured;
+                RenderRegions();
+                RenderHero();
+            };
+            _regionFlow.Controls.Add(chip);
         }
+    }
+
+    private void RenderHero()
+    {
+        if (_selected == null) return;
+        _heroTitle.Text = _selected.Name;
+        _heroMaps.Controls.Clear();
+        foreach (var map in _selected.Maps)
+        {
+            _heroMaps.Controls.Add(new Label
+            {
+                Text = RotationClient.MapName(map),
+                AutoSize = true,
+                Padding = new Padding(12, 8, 12, 8),
+                Margin = new Padding(0, 0, 8, 8),
+                BackColor = Color.FromArgb(31, 40, 49),
+                ForeColor = Color.FromArgb(215, 228, 238),
+                Font = new Font("Microsoft YaHei UI", 10F)
+            });
+        }
+    }
+
+    private async void ShowGuide()
+    {
+        if (_selected == null)
+        {
+            MessageBox.Show(this, "地图还没有加载完成。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        using var guide = new RegionGuideForm(_selected, _rotation.WeekLabel);
+        if (guide.ShowDialog(this) == DialogResult.OK && guide.StartSwitch)
+            await SwitchRegion();
+    }
+
+    private bool EnsureConfigured(bool firstRun, out bool startSwitch)
+    {
+        startSwitch = false;
+        if (!string.IsNullOrWhiteSpace(_config.PubgPath)
+            && File.Exists(_config.PubgPath)
+            && !string.IsNullOrWhiteSpace(_config.AcceleratorPath)
+            && File.Exists(_config.AcceleratorPath))
+            return true;
+
+        using var setup = new SetupForm(_config, firstRun);
+        if (setup.ShowDialog(this) == DialogResult.OK)
+        {
+            _config = ConfigStore.Load();
+            startSwitch = setup.StartSwitch;
+            Log("路径配置已更新");
+            return true;
+        }
+
+        SetStatus("先点右上角齿轮，选择 PUBG 和加速器");
+        return false;
+    }
+
+    private async void ShowSetup()
+    {
+        using var setup = new SetupForm(_config, false);
+        if (setup.ShowDialog(this) != DialogResult.OK) return;
+        _config = ConfigStore.Load();
+        SetStatus("路径已保存");
+        Log("路径配置已更新");
+        if (setup.StartSwitch) await SwitchRegion();
+    }
+
+    private async Task SwitchRegion()
+    {
+        if (!EnsureConfigured(false, out _)) return;
+        SetBusy(true, "正在关闭 Steam / PUBG…");
+        try
+        {
+            await Task.Run(() => ProcessTools.CloseSteamAndPubg(Log));
+            SetStatus("正在打开加速器…");
+            if (!Launcher.OpenAccelerator(_config, Log))
+            {
+                SetStatus("加速器打开失败");
+                MessageBox.Show(
+                    this,
+                    "没有打开加速器。请点右上角齿轮重新选择 DolphinQ.exe，或把协议链接改成 dolphin://。",
+                    "PUBG 换区助手",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+            SetStatus("已打开加速器。选好区服后，点「开启游戏」");
+        }
+        catch (Exception ex)
+        {
+            SetStatus("换区失败");
+            Log($"换区失败: {ex.Message}");
+            MessageBox.Show(this, ex.Message, "换区失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            SetBusy(false, null);
+        }
+    }
+
+    private async Task PlayGame()
+    {
+        if (!EnsureConfigured(false, out _)) return;
+        SetBusy(true, "正在启动 Steam 和 PUBG…");
+        try
+        {
+            var ok = await Task.Run(() => Launcher.StartGame(_config, Log));
+            if (ok)
+            {
+                SetStatus("已发送启动命令，等待游戏进入");
+            }
+            else
+            {
+                SetStatus("启动游戏失败");
+                MessageBox.Show(
+                    this,
+                    "启动失败。请确认 Steam 已安装，并重新选择 TslGame.exe。",
+                    "PUBG 换区助手",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            SetStatus("启动游戏失败");
+            Log($"启动失败: {ex.Message}");
+            MessageBox.Show(this, ex.Message, "启动失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            SetBusy(false, null);
+        }
+    }
+
+    private void SetBusy(bool busy, string? status)
+    {
+        _switchButton.Enabled = !busy;
+        _playButton.Enabled = !busy;
+        if (status is not null) SetStatus(status);
+    }
+
+    private void SetStatus(string text)
+    {
+        if (InvokeRequired)
+        {
+            BeginInvoke(new Action(() => SetStatus(text)));
+            return;
+        }
+        _status.Text = text;
     }
 
     private void Log(string message)
@@ -339,6 +612,44 @@ public sealed class MainForm : Form
             BeginInvoke(new Action(() => Log(message)));
             return;
         }
-        _log.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
+        var line = $"[{DateTime.Now:HH:mm:ss}] {message}";
+        _log.Add(line);
+        if (_log.Count > 500) _log.RemoveAt(0);
+    }
+
+    private void ShowLog()
+    {
+        using var dialog = new Form
+        {
+            Text = "日志",
+            ClientSize = new Size(640, 420),
+            StartPosition = FormStartPosition.CenterParent,
+            BackColor = Theme.Bg,
+            ForeColor = Theme.Text
+        };
+        dialog.Controls.Add(new TextBox
+        {
+            Multiline = true,
+            ReadOnly = true,
+            ScrollBars = ScrollBars.Vertical,
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(12, 16, 20),
+            ForeColor = Color.FromArgb(190, 205, 215),
+            Font = new Font("Consolas", 9F),
+            Text = string.Join(Environment.NewLine, _log)
+        });
+        dialog.ShowDialog(this);
+    }
+
+    private static Color ParseColor(string value)
+    {
+        try
+        {
+            return ColorTranslator.FromHtml(value);
+        }
+        catch
+        {
+            return Theme.Accent;
+        }
     }
 }

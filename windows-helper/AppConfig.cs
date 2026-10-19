@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace PubgZoneHelper;
@@ -11,6 +13,7 @@ public sealed class AppConfig
     public string AcceleratorUrl { get; set; } = "dolphin://";
     public string AcceleratorPath { get; set; } = "";
     public string SteamPath { get; set; } = "";
+    public string PubgPath { get; set; } = "";
     public string PubgAppId { get; set; } = "578080";
 }
 
@@ -52,6 +55,9 @@ public static class ConfigStore
                         case "SteamPath":
                             config.SteamPath = value;
                             break;
+                        case "PubgPath":
+                            config.PubgPath = value;
+                            break;
                         case "PubgAppId":
                             config.PubgAppId = value;
                             break;
@@ -82,6 +88,7 @@ public static class ConfigStore
             "AcceleratorUrl=" + config.AcceleratorUrl,
             "AcceleratorPath=" + config.AcceleratorPath,
             "SteamPath=" + config.SteamPath,
+            "PubgPath=" + config.PubgPath,
             "PubgAppId=" + config.PubgAppId
         });
     }
@@ -92,6 +99,8 @@ public static class ConfigStore
             config.SteamPath = DetectSteam();
         if (string.IsNullOrWhiteSpace(config.AcceleratorPath))
             config.AcceleratorPath = DetectDolphin();
+        if (string.IsNullOrWhiteSpace(config.PubgPath))
+            config.PubgPath = DetectPubg(config.SteamPath);
         if (string.IsNullOrWhiteSpace(config.AcceleratorUrl))
             config.AcceleratorUrl = "dolphin://";
     }
@@ -162,6 +171,54 @@ public static class ConfigStore
             if (File.Exists(candidate)) return candidate;
         }
         return "";
+    }
+
+    public static string DetectPubg(string steamPath)
+    {
+        foreach (var library in SteamLibraries(steamPath))
+        {
+            foreach (var folder in new[] { "PUBG", "PUBG Battlegrounds" })
+            {
+                var candidate = Path.Combine(
+                    library, "steamapps", "common", folder,
+                    "TslGame", "Binaries", "Win64", "TslGame.exe");
+                if (File.Exists(candidate)) return candidate;
+            }
+        }
+
+        foreach (var candidate in new[]
+        {
+            @"C:\Program Files (x86)\Steam\steamapps\common\PUBG\TslGame\Binaries\Win64\TslGame.exe",
+            @"D:\SteamLibrary\steamapps\common\PUBG\TslGame\Binaries\Win64\TslGame.exe",
+            @"E:\SteamLibrary\steamapps\common\PUBG\TslGame\Binaries\Win64\TslGame.exe"
+        })
+        {
+            if (File.Exists(candidate)) return candidate;
+        }
+        return "";
+    }
+
+    private static IEnumerable<string> SteamLibraries(string steamPath)
+    {
+        if (string.IsNullOrWhiteSpace(steamPath)) yield break;
+        var root = Path.GetDirectoryName(steamPath);
+        if (string.IsNullOrWhiteSpace(root)) yield break;
+        yield return root;
+
+        foreach (var vdf in new[]
+        {
+            Path.Combine(root, "steamapps", "libraryfolders.vdf"),
+            Path.Combine(root, "config", "libraryfolders.vdf")
+        })
+        {
+            if (!File.Exists(vdf)) continue;
+            foreach (var line in File.ReadAllLines(vdf))
+            {
+                var match = Regex.Match(line, "\"path\"\\s+\"([^\"]+)\"");
+                if (match.Success)
+                    yield return match.Groups[1].Value.Replace("\\\\", "\\");
+            }
+        }
     }
 
     private static string ExtractQuotedPath(string command)

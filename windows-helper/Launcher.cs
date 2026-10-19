@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace PubgZoneHelper;
 
@@ -67,5 +68,29 @@ public static class Launcher
     {
         var appId = string.IsNullOrWhiteSpace(config.PubgAppId) ? "578080" : config.PubgAppId.Trim();
         return OpenUrl($"steam://rungameid/{appId}", log);
+    }
+
+    public static bool StartGame(AppConfig config, Action<string> log)
+    {
+        if (Process.GetProcessesByName("steam").Length == 0)
+        {
+            if (!StartSteam(config, log)) return false;
+            log("等待 Steam 启动…");
+            for (var i = 0; i < 20; i++)
+            {
+                Thread.Sleep(500);
+                if (Process.GetProcessesByName("steam").Length > 0) break;
+            }
+            Thread.Sleep(2000);
+        }
+
+        var appId = string.IsNullOrWhiteSpace(config.PubgAppId) ? "578080" : config.PubgAppId.Trim();
+        if (OpenUrl($"steam://rungameid/{appId}", log)) return true;
+
+        if (!string.IsNullOrWhiteSpace(config.PubgPath) && File.Exists(config.PubgPath))
+            return StartExe(config.PubgPath, log);
+
+        log("启动 PUBG 失败，请检查 Steam 或重新选择 TslGame.exe");
+        return false;
     }
 }

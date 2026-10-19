@@ -14,6 +14,11 @@ internal static class Program
             Diagnostics.Write();
             return;
         }
+        if (args.Any(arg => arg.Equals("--rotation", StringComparison.OrdinalIgnoreCase)))
+        {
+            Diagnostics.WriteRotation();
+            return;
+        }
 
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);

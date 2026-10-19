@@ -41,12 +41,15 @@ python app.py --port 8766
 
 直接运行 [windows-helper/dist/PUBGZoneHelper.exe](windows-helper/dist/PUBGZoneHelper.exe)（需要管理员权限，UAC 会弹窗）。
 
-- 自动检测 `steam.exe` 和 `DolphinQ.exe`
+- 首次启动分 3 步选择 `TslGame.exe`、`DolphinQ.exe`，Steam 自动检测
+- 主界面按海豚面板风格做成三栏：左侧大区、中间地图与两个大按钮、右侧教程和工具
+- 右上角齿轮可随时重新选择路径
+- 大区地图数据直接读取 `pubg.jakt.online/api/rotation`
 - 一键关闭 Steam、Steam WebHelper、游戏覆盖层、PUBG / BattlEye 相关进程
 - 打开加速器：默认 `dolphin://` 展开面板，也可以改成 `dolphin://start_acc_game/<gameId>`
 - 协议打开失败时自动回退到配置好的 EXE
-- 可以重新选择加速器 EXE / Steam EXE，配置保存在 `%APPDATA%\PUBGZoneHelper\config.ini`
-- 「一键换区流程」= 关闭 Steam/PUBG → 打开加速器；选好区服后再启动 Steam/PUBG
+- 配置保存在 `%APPDATA%\PUBGZoneHelper\config.ini`
+- 主界面和换区教程里都有「一键换区」；选好区服后再点「开启游戏」
 
 它只做进程管理和程序启动，不注入游戏、不修改游戏文件。
 
