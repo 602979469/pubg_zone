@@ -1,0 +1,29 @@
+[Unit]
+Description=PUBG weekly map rotation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pubg
+Group=pubg
+WorkingDirectory=/opt/pubg-zone
+ExecStart=/usr/bin/python3 /opt/pubg-zone/app.py --no-browser --port 8765
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/pubg-zone/data
+MemoryMax=128M
+CPUQuota=25%
+TasksMax=32
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pubg-zone
+
+[Install]
+WantedBy=multi-user.target

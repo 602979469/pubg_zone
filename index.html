@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PUBG 本周地图轮换</title>
+  <style>
+    :root {
+      --bg: #0a0d10;
+      --panel: #13181d;
+      --panel-2: #181f26;
+      --line: #28313a;
+      --line-soft: #20272e;
+      --text: #e9edf1;
+      --muted: #8d99a6;
+      --muted-2: #66717d;
+      --accent: #f2a33a;
+      --accent-soft: rgba(242, 163, 58, 0.14);
+      --good: #54c98a;
+      --warn: #f0b84b;
+      --danger: #e46d6d;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(242, 163, 58, 0.10), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(64, 120, 190, 0.10), transparent 55%),
+        var(--bg);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      line-height: 1.55;
+    }
+
+    button, select { font: inherit; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .shell {
+      width: min(1320px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; }
+
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 13px;
+      border: 1px solid rgba(242, 163, 58, 0.45);
+      background: linear-gradient(145deg, rgba(242, 163, 58, 0.22), rgba(242, 163, 58, 0.04));
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      box-shadow: inset 0 0 24px rgba(242, 163, 58, 0.08);
+    }
+
+    h1 { margin: 0; font-size: clamp(23px, 3vw, 34px); letter-spacing: -0.02em; }
+
+    .subtitle {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .patch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border: 1px solid rgba(242, 163, 58, 0.35);
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: border-color .15s ease, background .15s ease, transform .15s ease;
+    }
+
+    .btn:hover { border-color: #3c4854; background: #1d252d; }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .55; cursor: wait; }
+
+    .btn-accent {
+      border-color: rgba(242, 163, 58, 0.45);
+      background: rgba(242, 163, 58, 0.13);
+      color: #ffd18a;
+    }
+
+    .callout {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid rgba(240, 184, 75, 0.24);
+      border-radius: var(--radius);
+      background: linear-gradient(100deg, rgba(240, 184, 75, 0.10), rgba(240, 184, 75, 0.02));
+      color: #d9c9a4;
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    .callout strong { color: #ffd98f; }
+    .callout .icon { color: var(--warn); font-size: 18px; line-height: 1.2; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,0.018), transparent), var(--panel);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .control-label {
+      min-width: 70px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .segmented {
+      display: inline-flex;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0e1317;
+    }
+
+    .segmented button {
+      border: 0;
+      border-radius: 7px;
+      padding: 7px 14px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .segmented button.active {
+      background: var(--accent-soft);
+      color: #ffd18a;
+      box-shadow: inset 0 0 0 1px rgba(242, 163, 58, 0.25);
+    }
+
+    .week-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .week-tab {
+      position: relative;
+      min-width: 158px;
+      text-align: left;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0e1317;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .week-tab strong { display: block; color: var(--text); font-size: 13px; }
+    .week-tab span { display: block; font-size: 11px; margin-top: 2px; }
+    .week-tab.active { border-color: rgba(242, 163, 58, 0.55); background: rgba(242, 163, 58, 0.08); }
+    .week-tab.active strong { color: #ffd18a; }
+
+    .now-tag {
+      position: absolute;
+      top: -8px;
+      right: 8px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #141414;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+
+    select {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #0e1317;
+      color: var(--text);
+      padding: 8px 10px;
+    }
+
+    .hint { color: var(--muted-2); font-size: 11px; }
+
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #0e1317;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .chip i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--map, #8d99a6);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--map, #8d99a6) 55%, transparent);
+    }
+
+    .chip.active { color: var(--text); border-color: rgba(242, 163, 58, 0.5); background: var(--accent-soft); }
+    .chip.clear { color: var(--muted-2); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(286px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .region-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+      min-height: 188px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(160deg, rgba(255,255,255,0.025), transparent 45%), var(--panel);
+      cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease, opacity .15s ease;
+      overflow: hidden;
+    }
+
+    .region-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: var(--region-accent, var(--accent));
+      opacity: .75;
+    }
+
+    .region-card:hover {
+      transform: translateY(-2px);
+      border-color: #3a4652;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+    }
+
+    .region-card.dim { opacity: .42; }
+    .region-card.match { border-color: rgba(84, 201, 138, 0.34); }
+
+    .region-head { display: flex; align-items: center; gap: 10px; }
+
+    .region-code {
+      display: inline-grid;
+      place-items: center;
+      min-width: 46px;
+      height: 32px;
+      padding: 0 8px;
+      border: 1px solid color-mix(in srgb, var(--region-accent, var(--accent)) 45%, transparent);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--region-accent, var(--accent)) 12%, transparent);
+      color: color-mix(in srgb, var(--region-accent, var(--accent)) 85%, white);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .05em;
+    }
+
+    .region-head h3 { margin: 0; font-size: 17px; }
+    .region-head .count { margin-left: auto; color: var(--muted-2); font-size: 11px; }
+
+    .maps { display: flex; flex-wrap: wrap; gap: 7px; }
+
+    .map {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border: 1px solid color-mix(in srgb, var(--map, #8d99a6) 34%, transparent);
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--map, #8d99a6) 9%, transparent);
+      color: #d7dde4;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .map i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--map, #8d99a6);
+      box-shadow: 0 0 7px color-mix(in srgb, var(--map, #8d99a6) 65%, transparent);
+    }
+
+    .maps.big .map { padding: 6px 11px; font-size: 13px; }
+
+    .card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--line-soft);
+      color: var(--muted-2);
+      font-size: 11px;
+    }
+
+    .card-foot .arrow { color: var(--accent); font-weight: 700; }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 26px 0 12px;
+    }
+
+    .section-head h2 { margin: 0; font-size: 18px; }
+    .section-head p { margin: 0; color: var(--muted-2); font-size: 12px; }
+
+    .ranked {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 15px 16px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(228, 109, 109, 0.24);
+      border-radius: var(--radius);
+      background: linear-gradient(100deg, rgba(228, 109, 109, 0.08), transparent 60%);
+    }
+
+    .ranked .label { color: #ff9d9d; font-weight: 800; font-size: 13px; }
+    .ranked .note { color: var(--muted); font-size: 12px; }
+
+    .matrix-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+
+    table { border-collapse: collapse; width: 100%; }
+
+    .matrix {
+      min-width: 760px;
+      font-size: 12px;
+    }
+
+    .matrix th, .matrix td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line-soft);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .matrix th:first-child, .matrix td:first-child { text-align: left; }
+    .matrix thead th {
+      position: sticky;
+      top: 0;
+      background: #10161b;
+      color: var(--muted);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .matrix tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .matrix .yes { color: var(--good); font-weight: 800; }
+    .matrix .no { color: #333d47; }
+    .matrix .col-active { background: rgba(242, 163, 58, 0.07); }
+    .matrix .row-name { color: var(--text); font-weight: 600; }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted-2);
+      font-size: 11px;
+    }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); display: inline-block; }
+    .dot.warn { background: var(--warn); }
+    .dot.bad { background: var(--danger); }
+
+    dialog {
+      width: min(980px, calc(100% - 28px));
+      max-height: calc(100vh - 40px);
+      padding: 0;
+      border: 1px solid #35414d;
+      border-radius: 16px;
+      background: #101519;
+      color: var(--text);
+      box-shadow: 0 30px 100px rgba(0,0,0,0.6);
+    }
+
+    dialog::backdrop { background: rgba(0,0,0,0.68); backdrop-filter: blur(4px); }
+
+    .dialog-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 17px 20px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(100deg, rgba(242,163,58,0.08), transparent 70%);
+    }
+
+    .dialog-head h3 { margin: 0; font-size: 20px; }
+    .dialog-head .region-code { height: 34px; }
+    .dialog-head .close { margin-left: auto; }
+
+    .dialog-body { padding: 20px; overflow: auto; max-height: calc(100vh - 160px); }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 22px;
+    }
+
+    .detail-grid h4 { margin: 0 0 9px; font-size: 13px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+    .detail-grid h4:not(:first-child) { margin-top: 20px; }
+
+    .mini-table { font-size: 12px; }
+    .mini-table th, .mini-table td { padding: 8px 9px; border-bottom: 1px solid var(--line-soft); text-align: left; }
+    .mini-table th { color: var(--muted-2); font-weight: 500; }
+    .mini-table tr.active { background: rgba(242, 163, 58, 0.07); }
+    .mini-table td:first-child { color: var(--accent); font-weight: 700; white-space: nowrap; }
+
+    .steps { margin: 0; padding-left: 20px; color: #c8d0d8; font-size: 13px; }
+    .steps li { margin-bottom: 8px; }
+    .steps li::marker { color: var(--accent); font-weight: 800; }
+
+    .node-box {
+      margin-top: 14px;
+      padding: 12px 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0d1216;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .node-box strong { color: #ffd18a; }
+    .node-box .node { display: inline-block; margin: 5px 6px 0 0; padding: 3px 8px; border-radius: 6px; background: rgba(242,163,58,0.10); color: #e9c88f; }
+
+    .warn { margin: 12px 0 0; color: #b99a68; font-size: 11px; }
+
+    .dialog-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 16px; }
+
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translate(-50%, 20px);
+      padding: 9px 15px;
+      border: 1px solid rgba(84, 201, 138, 0.35);
+      border-radius: 999px;
+      background: #12201a;
+      color: #b9f0d2;
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      z-index: 20;
+    }
+
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .empty {
+      padding: 36px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      text-align: center;
+    }
+
+    footer {
+      margin-top: 34px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line-soft);
+      color: var(--muted-2);
+      font-size: 11px;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 22px, 1320px); padding-top: 18px; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .control-label { min-width: 100%; }
+      .meta { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">PUBG</div>
+        <div>
+          <h1>本周地图轮换</h1>
+          <p class="subtitle">各大区地图池 · 周三 02:00 UTC 轮换 · 找你想玩的地图</p>
+        </div>
+      </div>
+      <div class="meta">
+        <span class="patch" id="patch">UPDATE —</span>
+        <span id="updated">加载中…</span>
+        <button class="btn" id="refresh">刷新数据</button>
+      </div>
+    </header>
+
+    <div class="callout">
+      <span class="icon">!</span>
+      <div>
+        <strong>改 Windows 时区不会切换匹配大区。</strong>
+        PUBG 按网络出口自动分配服务器，换区要换加速器的「区服 / 节点」，然后完全退出并重启游戏。
+        本页的时区选择只影响时间显示。
+      </div>
+    </div>
+
+    <section class="panel controls">
+      <div class="control-row">
+        <span class="control-label">平台</span>
+        <div class="segmented" id="platform">
+          <button data-platform="pc" class="active">PC</button>
+          <button data-platform="console">主机</button>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">显示时区</span>
+        <select id="timezone">
+          <option value="Asia/Shanghai">北京时间 UTC+8</option>
+          <option value="UTC">UTC</option>
+          <option value="Asia/Seoul">首尔 UTC+9</option>
+          <option value="America/Los_Angeles">洛杉矶 UTC-7/-8</option>
+          <option value="Europe/Berlin">柏林 UTC+1/+2</option>
+          <option value="America/Sao_Paulo">圣保罗 UTC-3</option>
+        </select>
+        <span class="hint">只改变本页时间，不会改变游戏区服。</span>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">地图筛选</span>
+        <div class="chips" id="map-filter"></div>
+      </div>
+    </section>
+
+    <div class="status-line" id="status"></div>
+
+    <section id="regions" class="grid"></section>
+
+    <div id="ranked-wrap"></div>
+
+    <footer>
+      <div>
+        数据：<a id="source-link" href="#" target="_blank" rel="noreferrer">pubgstatistics.com</a>
+        · 官方公告：<a id="official-link" href="#" target="_blank" rel="noreferrer">PUBG News</a>
+      </div>
+      <div>非官方工具。地图池以游戏内为准；跨区延迟更高，请遵守 PUBG 服务条款。</div>
+    </footer>
+  </div>
+
+  <dialog id="detail">
+    <div class="dialog-head">
+      <span class="region-code" id="detail-code">AS</span>
+      <h3 id="detail-title">亚洲</h3>
+      <button class="btn close" id="detail-close">关闭</button>
+    </div>
+    <div class="dialog-body" id="detail-body"></div>
+  </dialog>
+
+  <div id="toast"></div>
+
+  <script>
+    const MAP_META = {
+      Erangel:  { color: "#69c46f", cn: "艾伦格" },
+      Miramar:  { color: "#d9b56d", cn: "米拉玛" },
+      Taego:    { color: "#4fc3b4", cn: "泰戈" },
+      Sanhok:   { color: "#93cf5a", cn: "萨诺" },
+      Vikendi:  { color: "#7fb8ff", cn: "维寒迪" },
+      Deston:   { color: "#b48cf2", cn: "德斯顿" },
+      Rondo:    { color: "#f07f6c", cn: "荣都" },
+      Karakin:  { color: "#e3a14a", cn: "卡拉金" },
+      Paramo:   { color: "#b7c0c9", cn: "帕拉莫" }
+    };
+
+    const GUIDE = {
+      AS: {
+        nodes: ["亚洲 - 香港", "亚洲 - 日本", "亚洲 - 韩国"],
+        note: "优先选延迟最低的亚洲节点。亚洲池通常以艾伦格 / 泰戈为固定图，其余每周变化。"
+      },
+      SEA: {
+        nodes: ["东南亚 - 新加坡", "东南亚 - 马来西亚"],
+        note: "东南亚节点通常在新加坡。进大厅后看延迟，超过 100ms 建议换节点。"
+      },
+      NA: {
+        nodes: ["北美 - 美西 / 洛杉矶", "北美 - 美东"],
+        note: "北美图池较小，本周只有 3 张图；跨太平洋延迟较高，建议只在对局质量可接受时使用。"
+      },
+      SA: {
+        nodes: ["南美 - 巴西 / 圣保罗"],
+        note: "南美与北美本周地图池相同；物理距离远，延迟通常在 150ms 以上。"
+      },
+      EU: {
+        nodes: ["欧洲 - 德国 / 法兰克福", "欧洲 - 荷兰"],
+        note: "欧洲与北美本周地图池相同；优先选西欧节点。"
+      },
+      RU: {
+        nodes: ["俄罗斯 - 莫斯科"],
+        note: "俄罗斯区与欧洲本周地图池相同；节点可用性受加速器影响。"
+      },
+      Console: {
+        nodes: ["主机 - 对应区服节点"],
+        note: "主机端按平台和账号区服匹配，PC 加速器节点不一定适用；以主机网络设置为准。"
+      }
+    };
+
+    const state = {
+      data: null,
+      platform: "pc",
+      tz: "Asia/Shanghai",
+      filter: null,
+      selected: null,
+      loading: false,
+      poll: 0
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[ch]));
+
+    function mapColor(name) {
+      return (MAP_META[name] || {}).color || "#8d99a6";
+    }
+
+    function mapName(name) {
+      return (MAP_META[name] || {}).cn || name;
+    }
+
+    function regionShort(region) {
+      return region.id === "Console" ? "主机" : region.short;
+    }
+
+    function platformData() {
+      return state.platform === "console" ? state.data.console : state.data.pc;
+    }
+
+    function regions() {
+      const list = state.platform === "console"
+        ? (state.data.console_regions || [])
+        : (state.data.regions || []);
+      return list.filter((region) => region.id !== "KAKAO");
+    }
+
+    function weeks() {
+      return (platformData() && platformData().weeks) || [];
+    }
+
+    function currentWeek() {
+      const list = weeks();
+      if (!list.length) return 1;
+      const now = Date.now();
+      if (now < Date.parse(list[0].start)) return list[0].index;
+      if (now >= Date.parse(list[list.length - 1].end)) return list[list.length - 1].index;
+      for (const week of list) {
+        if (now >= Date.parse(week.start) && now < Date.parse(week.end)) return week.index;
+      }
+      return list[list.length - 1].index;
+    }
+
+    function weekByIndex(index) {
+      return weeks().find((week) => week.index === index) || weeks()[0] || null;
+    }
+
+    function regionMaps(region, index) {
+      return region.weeks[index - 1] || region.weeks[0] || [];
+    }
+
+    function fmt(iso, withTime = true) {
+      if (!iso) return "—";
+      const options = {
+        timeZone: state.tz,
+        month: "2-digit",
+        day: "2-digit",
+        hour: withTime ? "2-digit" : undefined,
+        minute: withTime ? "2-digit" : undefined,
+        hourCycle: "h23"
+      };
+      return new Intl.DateTimeFormat("zh-CN", options).format(new Date(iso));
+    }
+
+    function weekRange(week) {
+      return week ? `${fmt(week.start)} – ${fmt(week.end)}` : "—";
+    }
+
+    function mapBadge(name, big = false) {
+      return `<span class="map" style="--map:${mapColor(name)}"><i></i>${esc(mapName(name))}</span>`;
+    }
+
+    function mapBadges(names, big = false) {
+      if (!names || !names.length) return `<span class="hint">暂无数据</span>`;
+      return names.map((name) => mapBadge(name, big)).join("");
+    }
+
+    function mapsForWeek() {
+      const index = currentWeek();
+      const seen = new Set();
+      for (const region of regions()) {
+        for (const name of regionMaps(region, index)) seen.add(name);
+      }
+      const order = state.data.maps || Object.keys(MAP_META);
+      return [...seen].sort((a, b) => {
+        const ai = order.indexOf(a), bi = order.indexOf(b);
+        return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+      });
+    }
+
+    function render() {
+      if (!state.data || !state.data.patch) {
+        $("#regions").innerHTML = `<div class="empty">没有可用数据。点「刷新数据」再试，或检查网络。</div>`;
+        return;
+      }
+      $("#patch").textContent = `UPDATE ${state.data.patch}`;
+      $("#updated").textContent = `数据更新：${fmt(state.data.fetched_at)}`;
+      $("#source-link").href = state.data.source_url || "#";
+      $("#official-link").href = state.data.official_url || "https://pubg.com/en/news";
+      $("#official-link").textContent = state.data.official_title || "PUBG News";
+
+      const age = state.data.cache_age_seconds;
+      const stale = state.data.stale || (age != null && age > 24 * 3600);
+      const parts = [];
+      parts.push(`<span class="dot ${stale ? "warn" : ""}"></span>`);
+      parts.push(stale ? "缓存超过 24 小时，建议刷新" : "数据已就绪");
+      if (state.data.refreshing) parts.push(`<span class="dot warn"></span>后台刷新中…`);
+      if (state.data.refresh_error) parts.push(`<span class="dot bad"></span>刷新失败：${esc(state.data.refresh_error)}`);
+      const week = weekByIndex(currentWeek());
+      if (week) parts.push(`· 本周 ${weekRange(week)}`);
+      if (week) {
+        const left = Date.parse(week.end) - Date.now();
+        if (left > 0) {
+          const days = Math.floor(left / 86400000);
+          const hours = Math.floor((left % 86400000) / 3600000);
+          parts.push(`· 距下次轮换 ${days} 天 ${hours} 小时`);
+        }
+      }
+      $("#status").innerHTML = parts.join(" ");
+
+      renderFilters();
+      renderRegions();
+      renderRanked();
+    }
+
+    function renderFilters() {
+      const maps = mapsForWeek();
+      const chips = maps.map((name) => `
+        <button class="chip ${state.filter === name ? "active" : ""}" data-map="${esc(name)}" style="--map:${mapColor(name)}">
+          <i></i>${esc(mapName(name))}
+        </button>
+      `).join("");
+      $("#map-filter").innerHTML = `
+        <button class="chip clear ${state.filter ? "" : "active"}" data-map="">全部地图</button>
+        ${chips}
+      `;
+    }
+
+    function renderRegions() {
+      const index = currentWeek();
+      const list = [...regions()].sort((a, b) => {
+        if (state.filter) {
+          const am = regionMaps(a, index).includes(state.filter) ? 1 : 0;
+          const bm = regionMaps(b, index).includes(state.filter) ? 1 : 0;
+          if (am !== bm) return bm - am;
+        }
+        return (a.order || 99) - (b.order || 99) || a.name.localeCompare(b.name, "zh-CN");
+      });
+
+      if (!list.length) {
+        $("#regions").innerHTML = `<div class="empty">这个平台暂时没有分区数据。</div>`;
+        return;
+      }
+
+      $("#regions").innerHTML = list.map((region) => {
+        const maps = regionMaps(region, index);
+        const hasFilter = state.filter && maps.includes(state.filter);
+        const dim = state.filter && !hasFilter ? "dim" : "";
+        const match = state.filter && hasFilter ? "match" : "";
+        return `
+          <article class="region-card ${dim} ${match}" data-region="${esc(region.id)}" style="--region-accent:${region.accent}">
+            <div class="region-head">
+              <span class="region-code">${esc(regionShort(region))}</span>
+              <h3>${esc(region.name)}</h3>
+              <span class="count">${maps.length} 张图</span>
+            </div>
+            <div class="maps">${mapBadges(maps)}</div>
+            <div class="card-foot">
+              <span>${weekRange(weekByIndex(index))}</span>
+              <span class="arrow">换区教程 →</span>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderRanked() {
+      if (state.platform !== "pc" || !state.data.ranked) {
+        $("#ranked-wrap").innerHTML = "";
+        return;
+      }
+      $("#ranked-wrap").innerHTML = `
+        <section class="ranked">
+          <span class="label">竞技模式</span>
+          <div class="maps">${mapBadges(state.data.ranked.maps)}</div>
+          <span class="note">赛季固定地图池，按赛季更新。</span>
+        </section>
+      `;
+    }
+
+    function guideFor(region) {
+      return GUIDE[region.id] || {
+        nodes: ["目标区服节点"],
+        note: "节点名称因加速器而异，选择目标大区即可。"
+      };
+    }
+
+    function openDetail(regionId) {
+      const region = regions().find((item) => item.id === regionId);
+      if (!region) return;
+      state.selected = regionId;
+      const index = currentWeek();
+      const guide = guideFor(region);
+      const week = weekByIndex(index);
+
+      $("#detail-code").textContent = regionShort(region);
+      $("#detail-code").style.setProperty("--region-accent", region.accent);
+      $("#detail-title").textContent = region.name;
+
+      const steps = [
+        "完全退出 PUBG 和 Steam（包括任务栏托盘），确认游戏进程已结束。",
+        `打开加速器，选「绝地求生 PC」，节点选目标区：${guide.nodes.join(" / ")}。`,
+        "先开加速，再启动 Steam 和 PUBG；顺序反了可能仍走原线路。",
+        "进大厅看右下角延迟；开一局确认地图池是否和本页一致。",
+        "如果还是原区：换同区另一个节点，或重启加速器后再试。",
+        "改 Windows 时区只会改时钟，不会改匹配区服；不要指望它换区。"
+      ];
+
+      $("#detail-body").innerHTML = `
+        <div class="detail-grid">
+          <section>
+            <h4>本周地图池 · ${esc(week ? weekRange(week) : "")}</h4>
+            <div class="maps big">${mapBadges(regionMaps(region, index), true)}</div>
+            <p class="hint">本页只展示当前这一周的地图池。</p>
+          </section>
+          <section>
+            <h4>怎么换到这个区</h4>
+            <ol class="steps">${steps.map((step) => `<li>${esc(step)}</li>`).join("")}</ol>
+            <div class="node-box">
+              <strong>节点建议</strong><br>
+              ${guide.nodes.map((node) => `<span class="node">${esc(node)}</span>`).join("")}
+              <div style="margin-top:8px">${esc(guide.note)}</div>
+            </div>
+            <p class="warn">跨区会显著增加延迟，频繁切换网络出口可能触发账号验证。请遵守 PUBG 服务条款，风险自负。</p>
+            <div class="dialog-actions">
+              <button class="btn btn-accent" id="copy-guide">复制换区清单</button>
+            </div>
+          </section>
+        </div>
+      `;
+
+      $("#copy-guide").addEventListener("click", () => {
+        const text = [
+          `PUBG 换区清单 - ${region.name} (${region.short})`,
+          `本周：${week ? weekRange(week) : ""}`,
+          `推荐节点：${guide.nodes.join(" / ")}`,
+          ...steps.map((step, i) => `${i + 1}. ${step}`)
+        ].join("\n");
+        copyText(text);
+      });
+
+      const dialog = $("#detail");
+      if (!dialog.open) dialog.showModal();
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("已复制到剪贴板");
+      } catch (error) {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+        toast("已复制到剪贴板");
+      }
+    }
+
+    function toast(message) {
+      const element = $("#toast");
+      element.textContent = message;
+      element.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => element.classList.remove("show"), 1800);
+    }
+
+    async function load(force = false) {
+      if (state.loading) return;
+      state.loading = true;
+      const button = $("#refresh");
+      button.disabled = true;
+      button.textContent = force ? "刷新中…" : "加载中…";
+      try {
+        const response = await fetch(`/api/rotation${force ? "?refresh=1" : ""}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!data.patch) throw new Error(data.refresh_error || "没有可用数据");
+        state.data = data;
+        render();
+        if (data.refreshing && state.poll < 20) {
+          state.poll += 1;
+          setTimeout(() => load(false), 1500);
+        }
+      } catch (error) {
+        $("#regions").innerHTML = `<div class="empty">加载失败：${esc(error.message)}<br><br>检查网络后点「刷新数据」。</div>`;
+        $("#status").innerHTML = `<span class="dot bad"></span>加载失败`;
+      } finally {
+        state.loading = false;
+        button.disabled = false;
+        button.textContent = "刷新数据";
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      const platformButton = event.target.closest("[data-platform]");
+      if (platformButton) {
+        state.platform = platformButton.dataset.platform;
+        document.querySelectorAll("#platform button").forEach((button) => {
+          button.classList.toggle("active", button.dataset.platform === state.platform);
+        });
+        render();
+        return;
+      }
+
+      const mapButton = event.target.closest("[data-map]");
+      if (mapButton) {
+        const value = mapButton.dataset.map;
+        state.filter = value || null;
+        render();
+        return;
+      }
+
+      const card = event.target.closest("[data-region]");
+      if (card) {
+        openDetail(card.dataset.region);
+      }
+    });
+
+    $("#timezone").addEventListener("change", (event) => {
+      state.tz = event.target.value;
+      render();
+      if (state.selected && $("#detail").open) openDetail(state.selected);
+    });
+
+    $("#refresh").addEventListener("click", () => load(true));
+    $("#detail-close").addEventListener("click", () => $("#detail").close());
+
+    load(false);
+  </script>
+</body>
+</html>
