@@ -3,3 +3,5 @@ __pycache__/
 data/*.tmp
 data/rotation.json
 .idea/
+windows-helper/bin/
+windows-helper/obj/

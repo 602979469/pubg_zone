@@ -13,7 +13,6 @@
 命令行方式：
 
 ```bat
-cd pubg-rotation
 python app.py
 ```
 
@@ -37,6 +36,19 @@ python app.py --port 8766
 - 按地图筛选，例如只看本周有“维寒迪”的大区。
 - 大区详情：本周地图池、推荐加速器节点、换区清单，可一键复制。
 - 地图池按大区展示，包含 AS、SEA、NA、SA、EU、RU 和竞技模式。
+
+## Windows 换区助手
+
+直接运行 [windows-helper/dist/PUBGZoneHelper.exe](windows-helper/dist/PUBGZoneHelper.exe)（需要管理员权限，UAC 会弹窗）。
+
+- 自动检测 `steam.exe` 和 `DolphinQ.exe`
+- 一键关闭 Steam、Steam WebHelper、游戏覆盖层、PUBG / BattlEye 相关进程
+- 打开加速器：默认 `dolphin://` 展开面板，也可以改成 `dolphin://start_acc_game/<gameId>`
+- 协议打开失败时自动回退到配置好的 EXE
+- 可以重新选择加速器 EXE / Steam EXE，配置保存在 `%APPDATA%\PUBGZoneHelper\config.ini`
+- 「一键换区流程」= 关闭 Steam/PUBG → 打开加速器；选好区服后再启动 Steam/PUBG
+
+它只做进程管理和程序启动，不注入游戏、不修改游戏文件。
 
 ## 数据来源
 
